@@ -483,7 +483,3 @@ Possible future improvements include:
 • Deploy the services to AWS.
 • Explore how the architecture could be managed using Kubernetes.
 '''
-
-path = Path("/mnt/data/README.md")
-path.write_text(readme, encoding="utf-8")
-print(f"Created {path} ({len(readme.splitlines())} lines)")
