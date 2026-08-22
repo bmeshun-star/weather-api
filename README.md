@@ -1,489 +1,425 @@
-# Weather API — Manual vs AI-Assisted Development
+# Weather API: Manual and AI-Assisted Development
 
-A small Python/FastAPI project created to explore the difference between manually developing an application and using AI-assisted development.
+A beginner-friendly Python project that exposes current weather data for a city and adds a separate alert service. It documents a manual implementation, an AI-assisted implementation, and the Docker Compose setup used to run the Weather Service and Alert Service together.
 
-The project started as a simple weather API and was then extended with an AI-assisted implementation and a second service to demonstrate Docker Compose and service-to-service communication.
+![Python](https://img.shields.io/badge/Python-3.13-blue?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-used-009688?logo=fastapi&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-used-2496ED?logo=docker&logoColor=white)
+![Docker Compose](https://img.shields.io/badge/Docker%20Compose-used-2496ED?logo=docker&logoColor=white)
+![Requests](https://img.shields.io/badge/Requests-used-2B5B84)
 
----
+## Table of Contents
 
-## :dart: Project Goals
+- [Project Overview + Tech Stack](#project-overview--tech-stack)
+- [Quick Start](#quick-start)
+- [Architecture](#architecture)
+- [Project Goals](#project-goals)
+- [Manual Version](#manual-version)
+- [Dockerising the App](#dockerising-the-app)
+- [AI-Assisted Version](#ai-assisted-version)
+- [Manual vs AI Comparison](#manual-vs-ai-comparison)
+- [Alert Service](#alert-service)
+- [Docker Compose](#docker-compose)
+- [Testing & Validation](#testing--validation)
+- [Screenshots](#screenshots)
+- [Key Learnings](#key-learnings)
+- [Future Improvements](#future-improvements)
+- [Closing Summary](#closing-summary)
 
-The main goals of this project were to understand:
+## Project Overview + Tech Stack
 
+The project contains two FastAPI services:
 
-• How a simple Python API works.
-• How FastAPI exposes an HTTP endpoint.
-• How an application communicates with an external API.
-• How to containerise a Python application using Docker.
-• The difference between manual and AI-assisted development.
-• How multiple containers communicate with each other.
-• How Docker Compose can orchestrate multiple services.
+- The Weather Service looks up a city with Open-Meteo geocoding and requests current temperature and wind speed from the Open-Meteo forecast API.
+- The Alert Service requests weather data from the Weather Service and evaluates the returned temperature and wind speed.
 
----
+The root implementation is the manual version. A more defensive implementation is in `ai-version/`, and the Alert Service is in `alert-service/`.
 
-## :building_construction: Architecture
+| Technology | Use in this project |
+| --- | --- |
+| Python 3.13 | Application language and base Docker image version |
+| FastAPI | HTTP API framework |
+| Uvicorn | ASGI server used to run each API |
+| Requests | HTTP calls to Open-Meteo and between Compose services |
+| Open-Meteo | Geocoding and forecast data source |
+| Docker | Containerises each application |
+| Docker Compose | Builds and runs the two services together |
 
-The project consists of two services:
+## Quick Start
 
+### Docker Compose
 
-• **Weather Service** — retrieves weather information from Open-Meteo.
-• **Alert Service** — consumes the Weather Service and applies simple alert logic.
+From the repository root, build and start both services:
 
-```mermaid
-flowchart TD
-    User[Client / curl] --> Weather[Weather Service<br/>FastAPI :8000]
-    User --> Alert[Alert Service<br/>FastAPI :8001]
-    Weather --> OpenMeteo[Open-Meteo API]
-    Alert -->|HTTP request| Weather
+```bash
+docker compose up --build
 ```
 
-### Weather Service
+To stop the services:
 
-```text
-GET /weather?city=London
+```bash
+docker compose down
 ```
 
-The Weather Service retrieves the location and current weather information from Open-Meteo.
+| Service name | URL | Port | Endpoint |
+| --- | --- | --- | --- |
+| Weather Service | http://localhost:8000 | 8000 | `/weather?city=London` |
+| Alert Service | http://localhost:8001 | 8001 | `/alert?city=London` |
 
-### Alert Service
+### Manual run
 
-```text
-GET /alert?city=London
-```
-
-The Alert Service receives weather data from the Weather Service and checks whether an alert should be triggered.
-
-An alert is generated when:
-
-
-• Temperature is above 30°C.
-• OR wind speed is above 40 km/h.
-
----
-
-# 1. Manual Version
-
-The first version was developed manually to understand the basic application flow before creating the AI-assisted version.
-
-This was my first time building and containerising an application like this, so I used documentation, YouTube tutorials and AI assistance when I needed help understanding concepts or troubleshooting problems.
-
-The application uses:
-
-
-• Python.
-• FastAPI.
-• Requests.
-• Open-Meteo API.
-
-### Basic flow
-
-```text
-Client
-  ↓
-FastAPI endpoint
-  ↓
-Python application
-  ↓
-Open-Meteo API
-  ↓
-JSON weather response
-```
-
-### Run locally
-
-Install the dependencies:
+Install the Weather Service dependencies and start the root application:
 
 ```bash
 pip install -r requirements.txt
-```
-
-Start the application:
-
-```bash
 uvicorn app:app --reload
 ```
 
-Test the endpoint:
+The AI-assisted Weather Service can be run separately from its directory:
+
+```bash
+cd ai-version
+pip install -r requirements.txt
+uvicorn app:app --reload
+```
+
+The Alert Service can also be started directly, but its endpoint expects the hostname `weather-service`, which is provided by the Docker Compose network. Running it by itself therefore does not provide a working weather dependency.
+
+```bash
+cd alert-service
+pip install -r requirements.txt
+uvicorn app:app --port 8001
+```
+
+### Test requests
+
+With the relevant service running, request weather data:
 
 ```bash
 curl "http://localhost:8000/weather?city=London"
 ```
 
-FastAPI documentation is also available at:
+With Docker Compose running, request an alert:
 
-```text
-http://localhost:8000/docs
+```bash
+curl "http://localhost:8001/alert?city=London"
 ```
 
----
+FastAPI's generated documentation is available for each running service at `/docs`:
 
-# 2. Dockerising the Application
+```bash
+curl "http://localhost:8000/docs"
+curl "http://localhost:8001/docs"
+```
 
-The manual application was then containerised using Docker.
+## Architecture
 
-The Dockerfile:
+```mermaid
+flowchart TD
+    Client[Client or curl] --> Weather[Weather Service<br/>FastAPI on port 8000]
+    Client --> Alert[Alert Service<br/>FastAPI on port 8001]
+    Weather --> Geocoding[Open-Meteo Geocoding API]
+    Weather --> Forecast[Open-Meteo Forecast API]
+    Alert -->|GET /weather?city=...| Weather
+```
 
+### Weather Service
 
-1. Uses a Python base image.
-2. Creates `/app` as the working directory.
-3. Copies the application and requirements.
-4. Installs the dependencies.
-5. Exposes port 8000.
-6. Starts the application using Uvicorn.
+The root `app.py` exposes `GET /weather` with a required `city` query parameter. It uses Open-Meteo geocoding to find the first result, then requests `temperature_2m` and `wind_speed_10m` from the forecast API. It returns the requested city and the API's `current` object.
 
-### Build the Docker image
+The implementation in `ai-version/app.py` uses the same endpoint and weather fields, while also returning the matched country and handling empty or unknown cities and upstream request failures.
+
+### Alert Service
+
+The Alert Service exposes `GET /alert` with a required, non-empty `city` query parameter. It calls `http://weather-service:8000/weather` and uses the returned `current` values to produce an alert result. The internal hostname is available when the services run through Docker Compose.
+
+Example Weather Service response:
+
+```json
+{
+  "city": "London",
+  "current": {
+    "time": "2026-08-18T22:00",
+    "interval": 900,
+    "temperature_2m": 21.4,
+    "wind_speed_10m": 11.2
+  }
+}
+```
+
+## Project Goals
+
+- Learn how a Python application can expose an HTTP endpoint.
+- Use FastAPI and Uvicorn to serve a small API.
+- Understand requests to an external weather API.
+- Learn how to build and run a Docker image.
+- Compare manual development with AI-assisted development.
+- Understand basic communication between two Compose services.
+
+## Manual Version
+
+The manual version is the root application in `app.py`. It is intentionally small: it accepts a city, performs geocoding, retrieves current weather data, and returns JSON.
+
+```mermaid
+flowchart LR
+    Client[Client] --> Endpoint[GET /weather]
+    Endpoint --> Python[Python and Requests]
+    Python --> OpenMeteo[Open-Meteo]
+    OpenMeteo --> Response[JSON response]
+```
+
+Technology used:
+
+- Python
+- FastAPI
+- Uvicorn
+- Requests
+- Open-Meteo
+
+## Dockerising the App
+
+The root `Dockerfile`:
+
+1. Starts from `python:3.13.9`.
+2. Sets `/app` as the working directory.
+3. Copies `app.py` and `requirements.txt` into `/app`.
+4. Installs the listed Python packages.
+5. Documents port 8000 with `EXPOSE`.
+6. Starts the FastAPI application with Uvicorn on `0.0.0.0:8000`.
+
+Build the root image:
 
 ```bash
 docker build -t weather-api .
 ```
 
-### Run the container
+Run it with port 8000 published to the host:
 
 ```bash
-docker run -p 8000:8000 weather-api
+docker run --rm -p 8000:8000 weather-api
 ```
 
-### Check running containers
+## AI-Assisted Version
+
+The AI-assisted Weather Service is located in `ai-version/`. It has its own `app.py`, `Dockerfile`, and `requirements.txt`, so it can be built independently of the root implementation.
+
+Compared with the root implementation, the AI-assisted version adds:
+
+- Required and trimmed city input validation.
+- A 10-second timeout for external requests.
+- HTTP error handling for upstream requests.
+- A `404` response when geocoding returns no results.
+- A `502` response for weather or geocoding failures.
+- `country` in the response when Open-Meteo provides it.
+
+Build the AI-assisted image:
 
 ```bash
-docker ps
+docker build -t weather-api-ai ./ai-version
 ```
 
-Docker allowed the application and its dependencies to run in an isolated container rather than directly on the host machine.
-
----
-
-# 3. AI-Assisted Version
-
-The second implementation was created using AI assistance.
-
-The goal was to compare the development process and implementation with the manually created version.
-
-The AI-assisted version is located in:
-
-```text
-ai-version/
-```
-
-The AI-assisted implementation:
-
-
-• Uses FastAPI.
-• Uses Requests.
-• Uses Open-Meteo geocoding.
-• Retrieves current weather data.
-• Validates the city input.
-• Handles upstream API failures.
-• Uses request timeouts.
-• Returns clear HTTP errors.
-
-### Build
-
-```bash
-docker build -t weather-api-ai ai-version
-```
-
-### Run
+Run it:
 
 ```bash
 docker run --rm -p 8000:8000 weather-api-ai
 ```
 
-### Test
+Test it:
 
 ```bash
 curl "http://localhost:8000/weather?city=London"
 ```
 
----
+## Manual vs AI Comparison
 
-# 4. Manual vs AI-Assisted Development
+| Feature | Manual root version | AI-assisted version |
+| --- | --- | --- |
+| Weather endpoint | `GET /weather` | `GET /weather` |
+| Geocoding | Open-Meteo, first result | Open-Meteo, first result |
+| Current data | Temperature and wind speed | Temperature and wind speed |
+| Input handling | Required `city` parameter in the function signature | Required, trimmed, non-empty `city` |
+| Timeouts | Not configured | 10 seconds for HTTP requests |
+| Upstream errors | Not explicitly converted to API errors | Converted to `502` responses |
+| Unknown city | Not explicitly handled | Returns `404` |
+| Response fields | `city` and `current` | Matched `city`, `country`, and `current` |
 
-| Area | Manual Version | AI-Assisted Version |
-|---|---|---|
-| Development | Developed manually with learning resources and troubleshooting help | Developed with AI assistance |
-| Framework | FastAPI | FastAPI |
-| External API | Open-Meteo | Open-Meteo |
-| HTTP client | Requests | Requests |
-| Docker | Dockerfile | Dockerfile |
-| Input validation | Basic | More explicit |
-| Error handling | Basic | More comprehensive |
-| Request timeouts | Basic/none | Explicit timeout |
-| Testing | Manual testing | AI-assisted mocked tests and Docker validation |
+### Development reflection
 
-### What I learned
+This was my first hands-on project of this kind. I used documentation and AI as learning and troubleshooting support, then reviewed the files and tested the services to understand what was implemented. The comparison helped me see both the speed of AI assistance and the importance of checking generated code rather than treating it as a finished explanation.
 
-The AI-assisted version was faster to implement and provided useful suggestions for error handling, testing and structure.
+### Key finding
 
-However, using AI did not remove the need to understand the code.
+AI assistance can suggest useful validation and error handling, but the developer still needs to understand the request flow, verify the behavior, and take responsibility for the final code.
 
-I still needed to review the generated implementation, test it, understand the architecture and troubleshoot issues.
+## Alert Service
 
-The comparison helped me understand that AI can accelerate development, but the developer remains responsible for understanding and validating the result.
+The Alert Service's workflow is:
 
----
-
-# 5. My Development Experience
-
-This was my first time building and containerising an application like this, so I did not know the complete process from the beginning.
-
-Even while building the manual version, I used documentation, YouTube tutorials and AI assistance to understand concepts and troubleshoot problems when I got stuck.
-
-I came across several obstacles along the way, including:
-
-
-• Understanding how to create the FastAPI endpoint.
-• Connecting the application to an external weather API.
-• Understanding API responses and JSON data.
-• Creating the Dockerfile.
-• Understanding Docker `WORKDIR`, `COPY` and `CMD`.
-• Understanding Docker ports and port mapping.
-• Building and running the Docker image.
-• Debugging errors during development.
-
-The important part for me was that I did not simply copy a finished solution. I worked through the problems, tested different approaches and gradually understood what each part was doing.
-
-By the end, I had successfully built the application manually, containerised it, created an AI-assisted version and extended the project with a second service.
-
-This helped me realise that AI can significantly speed up development, but understanding the underlying code and architecture is still important because I need to be able to review, test and explain what the AI has produced.
-
----
-
-# 6. Alert Service
-
-A second service was introduced to demonstrate service-to-service communication.
-
-The Alert Service does not call Open-Meteo directly.
-
-Instead, the flow is:
-
-```text
-Alert Service
-      ↓
-Weather Service
-      ↓
-Open-Meteo
+```mermaid
+flowchart LR
+    Request[GET /alert?city=London] --> AlertApp[Alert Service]
+    AlertApp --> WeatherRequest[GET weather-service:8000/weather]
+    WeatherRequest --> WeatherService[Weather Service]
+    WeatherService --> Data[temperature_2m and wind_speed_10m]
+    Data --> Decision{Temperature > 30<br/>or wind speed > 40?}
+    Decision -->|Yes| Warning[Dangerous conditions alert]
+    Decision -->|No| Normal[Normal conditions]
 ```
 
-The Alert Service requests weather information from the Weather Service and then applies simple business logic.
-
-### Endpoint
+Endpoint:
 
 ```text
 GET /alert?city=London
 ```
 
-### Alert thresholds
+The alert logic is exactly:
 
-An alert is triggered when:
+- An alert is `true` when `temperature_2m > 30` **or** `wind_speed_10m > 40`.
+- Otherwise, `alert` is `false`.
+- Alert message: `Weather alert: dangerous conditions`.
+- Normal message: `Weather conditions are normal`.
+- The returned fields are `city`, `alert`, `message`, `temperature_c`, and `wind_speed_kmh`.
 
-```text
-Temperature > 30°C
-OR
-Wind speed > 40 km/h
-```
-
-### Example response
+Example response:
 
 ```json
 {
   "city": "London",
   "alert": false,
   "message": "Weather conditions are normal",
-  "temperature_c": 21.5,
-  "wind_speed_kmh": 11.5
+  "temperature_c": 21.4,
+  "wind_speed_kmh": 11.2
 }
 ```
 
----
+## Docker Compose
 
-# 7. Docker Compose
+The Compose file defines two services:
 
-Docker Compose is used to run the Weather Service and Alert Service together.
+| Service | Build context | Host port | Container port | Depends on |
+| --- | --- | --- | --- | --- |
+| `weather-service` | Repository root and root `Dockerfile` | 8000 | 8000 | None |
+| `alert-service` | `./alert-service` | 8001 | 8001 | `weather-service` |
 
-The Compose configuration contains two services:
+Both services are attached to Docker Compose's default network. This is used by the Alert Service's configured URL, `http://weather-service:8000/weather`, to reach the Weather Service by its service name. The host ports make the two APIs available from the machine running Docker.
 
-
-• `weather-service`.
-• `alert-service`.
-
-### Start both services
+Start the services:
 
 ```bash
 docker compose up --build
 ```
 
-### Weather Service
-
-```text
-http://localhost:8000
-```
-
-### Alert Service
-
-```text
-http://localhost:8001
-```
-
-### Test the Weather Service
+Run them in the background:
 
 ```bash
-curl "http://localhost:8000/weather?city=London"
+docker compose up --build -d
 ```
 
-### Test the Alert Service
+Stop and remove the Compose services:
 
 ```bash
-curl "http://localhost:8001/alert?city=London"
+docker compose down
 ```
 
-The Alert Service communicates with the Weather Service using the Docker Compose service name:
+## Testing & Validation
 
-```text
-http://weather-service:8000
-```
+The repository does not include a test suite. The following checks can be performed with the current files:
 
-Docker Compose provides internal networking between the containers, allowing the Alert Service to reach the Weather Service by its service name.
-
-This demonstrates basic service-to-service communication between containers.
-
----
-
-# 8. Testing and Validation
-
-The project was validated at multiple stages.
-
-### Python syntax validation
+Check Python syntax:
 
 ```bash
 python -m py_compile app.py
+python -m py_compile ai-version/app.py
+python -m py_compile alert-service/app.py
 ```
 
-### AI-assisted endpoint tests
-
-The AI-assisted implementation was tested using mocked responses for:
-
-
-• Successful weather retrieval.
-• Unknown cities.
-• Upstream API failures.
-
-### Alert Service tests
-
-The Alert Service was tested for:
-
-
-• Normal weather.
-• High temperature.
-• High wind.
-• Upstream failure.
-
-### Docker validation
-
-The Weather API and Alert Service were successfully built as Docker images.
-
-### Docker Compose validation
+Validate the Compose configuration:
 
 ```bash
 docker compose config --quiet
 ```
 
-The Compose configuration passed validation.
+Build the images through Compose:
 
-### Live service-to-service test
-
-Both services were successfully started using Docker Compose.
-
-The Weather Service returned live weather data and the Alert Service successfully consumed that data through the Weather Service.
-
-Example:
-
-```text
-Weather Service
-21.5°C / 11.5 km/h
-        ↓
-Alert Service
-        ↓
-No alert
+```bash
+docker compose build
 ```
 
----
+With the services running, exercise the implemented endpoints:
 
-# 9. Screenshots
+```bash
+curl "http://localhost:8000/weather?city=London"
+curl "http://localhost:8001/alert?city=London"
+```
 
-Screenshots demonstrating the development and testing process will be added here.
+These live requests require network access to Open-Meteo. Responses can change because the weather data is current data from the external API.
 
-### Manual API
+## Screenshots
 
-![Manual API](screenshots/manual-api.png)
+### Manual Weather API documentation
 
-### Docker Container
+![FastAPI Swagger UI for the manual Weather Service](screenshots/manual-api.png)
 
-![Docker container](screenshots/docker-container.png)
+### Docker image build
 
-### AI-Assisted Version
+![Docker build output for the Weather API](screenshots/docker-build.png)
 
-![AI-assisted version](screenshots/ai-version.png)
-![AI-assisted version](screenshots/ai-version-2.png)
+### Running Docker container
 
-### Docker Compose
+![Running Weather API Docker container](screenshots/docker-container.png)
 
-![Docker Compose](screenshots/compose.png)
+### Docker Compose build
 
-### Service-to-Service Communication
+![Docker Compose building the Weather Service and Alert Service](screenshots/compose.png)
 
-![Service-to-service communication](screenshots/service-communication.png)
-![Service-to-service communication](screenshots/service-communication-2.png)
+### AI-assisted Weather Service response
 
----
+![AI-assisted Weather Service JSON response](screenshots/ai-version.png)
 
-# 10. Key Learnings
+### Alert Service response
 
-This project helped me understand the relationship between:
+![Alert Service JSON response](screenshots/service-communication-2.png)
+
+### Service communication
+
+![Alert Service communicating with the Weather Service](screenshots/service-communication.png)
+
+## Key Learnings
+
+The relationship I learned through this project is:
 
 ```text
 Python
-  ↓
-FastAPI
-  ↓
-External API
-  ↓
-Docker
-  ↓
-Containers
-  ↓
-Docker Compose
-  ↓
-Service-to-Service Communication
+  -> FastAPI
+  -> Uvicorn
+  -> Dockerfile
+  -> Docker Image
+  -> Container
+  -> Docker Compose
+  -> Services
 ```
 
-The biggest learning was that AI-assisted development can accelerate implementation, but it does not replace the need for understanding.
+Python contains the application logic. FastAPI defines the HTTP endpoints, and Uvicorn serves the application. The Dockerfile describes how to package the application into a Docker image. Running that image creates a container. Docker Compose then builds and runs the Weather Service and Alert Service as connected services.
 
-I still need to understand:
+When using AI, developer responsibilities still include understanding the generated code, checking its assumptions, validating endpoints and error paths, reviewing security and reliability concerns, and being able to explain and maintain the result.
 
+## Future Improvements
 
-• What the generated code is doing.
-• Why the architecture works.
-• How services communicate.
-• How to test the application.
-• How to troubleshoot errors.
-• How to explain the solution.
+- [ ] Add automated tests for successful responses and failure paths.
+- [ ] Add configuration through environment variables.
+- [ ] Add more weather conditions to the alert logic.
+- [ ] Improve handling of external API responses in the root implementation.
+- [ ] Add CI checks for syntax, tests, and Docker builds.
 
----
+## Closing Summary
 
-# Future Improvements
+This project records a practical first step in building APIs, containerising them, and connecting services with Docker Compose. AI helped accelerate learning and implementation, while inspecting, testing, and explaining the code remained part of the development work.
 
-Possible future improvements include:
+> Build it, inspect it, test it, and understand it.
 
+### References
 
-• Add environment variables for configuration.
-• Add more weather alert conditions.
-• Add automated tests.
-• Add CI/CD using GitHub Actions.
-• Deploy the services to AWS.
-• Explore how the architecture could be managed using Kubernetes.
-'''
-
-path = Path("/mnt/data/README.md")
-path.write_text(readme, encoding="utf-8")
-print(f"Created {path} ({len(readme.splitlines())} lines)")
+- [FastAPI documentation](https://fastapi.tiangolo.com/)
+- [Uvicorn documentation](https://www.uvicorn.org/)
+- [Docker Compose documentation](https://docs.docker.com/compose/)
+- [Open-Meteo documentation](https://open-meteo.com/en/docs)
