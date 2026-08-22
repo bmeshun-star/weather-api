@@ -1,6 +1,6 @@
 # Weather API: Manual and AI-Assisted Development
 
-A beginner-friendly Python project that exposes current weather data for a city and adds a separate alert service. It documents a manual implementation, an AI-assisted implementation, and the Docker Compose setup used to run the Weather Service and Alert Service together.
+A beginner-friendly Python project that exposes current weather data for a city and adds a separate alert service. It documents a manual implementation, an AI-assisted implementation, and the Docker Compose setup used to run the Weather Service and Alert Service together. This was my first hands-on project of this kind, so the focus was learning by doing and using AI as a development assistant without treating it as a replacement for understanding.
 
 ![Python](https://img.shields.io/badge/Python-3.13-blue?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-used-009688?logo=fastapi&logoColor=white)
@@ -193,6 +193,12 @@ Build the root image:
 docker build -t weather-api .
 ```
 
+Check the image:
+
+```bash
+docker images
+```
+
 Run it with port 8000 published to the host:
 
 ```bash
@@ -313,6 +319,12 @@ Run them in the background:
 
 ```bash
 docker compose up --build -d
+```
+
+Check the running services:
+
+```bash
+docker compose ps
 ```
 
 Stop and remove the Compose services:
