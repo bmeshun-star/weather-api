@@ -6,6 +6,8 @@ app = FastAPI(title="Weather Alert Service")
 WEATHER_API_URL = "http://weather-service:8000/weather"
 REQUEST_TIMEOUT = 10
 
+def should_alert(temperature, wind_speed):
+    return temperature > 30 or wind_speed > 40
 
 @app.get("/alert")
 def get_alert(city: str = Query(..., min_length=1)):
@@ -30,7 +32,8 @@ def get_alert(city: str = Query(..., min_length=1)):
             detail="Unable to retrieve weather data",
         ) from error
 
-    alert = temperature > 30 or wind_speed > 40
+    alert = should_alert(temperature, wind_speed)
+
     message = "Weather alert: dangerous conditions" if alert else "Weather conditions are normal"
 
     return {
