@@ -8,6 +8,8 @@ on:
 jobs:
     test:
       runs-on: ubuntu-latest
+      env:
+        PYTHONPATH: .
       steps:
         - uses: actions/checkout@v4
         - name: Set up Python
@@ -19,6 +21,12 @@ jobs:
             python -m pip install --upgrade pip
             pip install -r requirements.txt
             pip install -r requirements_dev.txt
+        - name: Check python path
+          run: |
+            pwd
+            ls -ls
+            python -c "import sys; print(sys.path)"
+            python -c "import alert_service; print(alert_service)"
         - name: Run tests
           run: |
             pytest --maxfail=1 --disable-warnings -q
