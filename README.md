@@ -21,6 +21,7 @@ A beginner-friendly Python project that exposes current weather data for a city 
 - [Alert Service](#alert-service)
 - [Docker Compose](#docker-compose)
 - [Testing & Validation](#testing--validation)
+- [Testing & CI](#testing--ci)
 - [Screenshots](#screenshots)
 - [Key Learnings](#key-learnings)
 - [Future Improvements](#future-improvements)
@@ -365,6 +366,38 @@ curl "http://localhost:8001/alert?city=London"
 ```
 
 These live requests require network access to Open-Meteo. Responses can change because the weather data is current data from the external API.
+
+## Testing & CI
+
+The project now includes automated tests using pytest to check the alert logic and the API flow.
+
+The tests include:
+
+- Unit tests for the `should_alert()` function, checking normal conditions, temperature above the threshold, wind speed above the threshold, and values exactly at the thresholds.
+- Integration testing for the `/alert` endpoint, using FastAPI's `TestClient` and mocking the Weather Service response.
+- `requirements_dev.txt` contains the development/testing dependencies, including `pytest` and `httpx`.
+
+In beginner-friendly language, unit tests test a small piece of logic independently, while the integration test checks that multiple parts of the application work together through the `/alert` endpoint.
+
+Run the tests locally:
+
+```bash
+python -m pytest
+```
+
+The current test suite passes successfully with 5 tests passing.
+
+![Local terminal showing the pytest run passing](screenshots/local-test-passing.png)
+
+Local terminal output showing the pytest run completing successfully with all tests passing.
+
+![GitHub Actions Automated Tests workflow](screenshots/github-action.png)
+
+GitHub Actions workflow run showing the automated tests completing successfully.
+
+### GitHub Actions
+
+The GitHub Actions workflow automatically runs the tests when a Pull Request is created or updated and when changes are pushed to `main`. This provides automated validation before and after changes are merged.
 
 ## Screenshots
 
