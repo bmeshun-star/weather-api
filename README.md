@@ -385,19 +385,19 @@ Run the tests locally:
 python -m pytest
 ```
 
-The current test suite passes successfully with 5 tests passing.
-
-![Local terminal showing the pytest run passing](screenshots/local-test-passing.png)
+The current test suite passes successfully with 4 tests passing.
 
 Local terminal output showing the pytest run completing successfully with all tests passing.
 
-![GitHub Actions Automated Tests workflow](screenshots/github-action.png)
+![Local terminal showing the pytest run passing](screenshots/local-test-passing.png)
 
 GitHub Actions workflow run showing the automated tests completing successfully.
 
 ### GitHub Actions
 
 The GitHub Actions workflow automatically runs the tests when a Pull Request is created or updated and when changes are pushed to `main`. This provides automated validation before and after changes are merged.
+
+![GitHub Actions Automated Tests workflow](screenshots/github-action.png)
 
 ## Screenshots
 
