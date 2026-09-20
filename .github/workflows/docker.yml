@@ -3,13 +3,27 @@ on:
   push:
     branches: 
         - main
-
+permissions:
+  packages: write
+  contents: read
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
+      
       - name: Build Docker image
         run: docker build -t weather-api .
+
+      - name: Log in to GitHub Container Registry
+        run:
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Tag Docker image
+        run: 
+          docker tag weather-api ghcr.io/bmeshun-star/weather-api:latest
+      - name: Push Docker image
+        run: 
+          docker push ghcr.io/bmeshun-star/weather-api:latest
+
+
