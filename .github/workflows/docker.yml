@@ -16,14 +16,23 @@ jobs:
       - name: Build Docker image
         run: docker build -t weather-api .
 
+      - name: Build Alert service image
+        run: docker build -t alert-service ./alert_service
+
       - name: Log in to GitHub Container Registry
         run:
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-      - name: Tag Docker image
+      - name: Tag Weather-API image
         run: 
           docker tag weather-api ghcr.io/bmeshun-star/weather-api:latest
-      - name: Push Docker image
+      - name: Tag Alert Service image
+        run: 
+          docker tag alert-service ghcr.io/bmeshun-star/alert-service:latest
+      - name: Push Weather-API image
         run: 
           docker push ghcr.io/bmeshun-star/weather-api:latest
+      - name: Push Alert Service image
+        run: 
+          docker push ghcr.io/bmeshun-star/alert-service:latest
 
 
