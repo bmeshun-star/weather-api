@@ -1,4 +1,4 @@
-apiVersion: app/v1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: weather-deployment
@@ -6,8 +6,8 @@ metadata:
 spec:
  replicas: 1
  selector: 
-  matchLabels:
-    app: weather
+   matchLabels:
+     app: weather
  template:
   metadata:
     labels:
