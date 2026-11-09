@@ -1,0 +1,19 @@
+kind: Deployment
+metadata:
+  name: weather-deployment
+  namespace: weather-app
+spec:
+ replicas: 1
+  selector: 
+    matchLabels:
+      app: weather
+template:
+  metadata:
+    labels:
+      app: weather
+  spec:
+    containers:
+      - name: weather-api
+        image: ghcr.io/bmeshun-star/weather-api:latest
+        ports:
+          - containerPort: 8000
